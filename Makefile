@@ -1,19 +1,22 @@
-TARGETS := memcpy_kprobe 
+KPROBE := memcpy_kprobe 
+STAT   := memcpy_stat
 
 # Generate file name-scheme based on TARGETS
 KERN_SOURCES := memcpy_kprobe_kern.c memcpy_stat_kern.c
-USER_SOURCES := memcpy_kprobe_user.c
 KERN_OBJECTS = ${KERN_SOURCES:.c=.o}
-USER_OBJECTS = memcpy_kprobe_user.o
 
 STAT_USER := d_memcpy_stat
 STAT_USER_SOURCES = memcpy_stat_user.d
 STAT_USER_OBJECTS := ${STAT_USER_SOURCES:.d=.o} 
 
+KPROBE_USER := d_memcpy_kprobe
+KPROBE_USER_SOURCES = memcpy_kprobe_user.d
+KPROBE_USER_OBJECTS := ${KPROBE_USER_SOURCES:.d=.o} 
+
 # Notice: the kbuilddir can be redefined on make cmdline
 KERNEL ?= /lib/modules/$(shell uname -r)/build/
 
-CFLAGS := -O2 -Wall
+CFLAGS := -g -O1 -Wall
 CFLAGS += -I ./
 
 # EXTRA_CFLAGS=-Werror
@@ -40,16 +43,18 @@ LINUXINCLUDE += -I$(KERNEL)/include/uapi
 LINUXINCLUDE += -include $(KERNEL)/include/linux/kconfig.h
 LINUXINCLUDE += -I$(KERNEL)/include/generated/uapi
 
-all: $(TARGETS) $(STAT_USER) $(KERN_OBJECTS)
+all: $(KPROBE_USER) $(STAT_USER) $(KERN_OBJECTS)
 
 .PHONY: clean $(CLANG) $(LLC)
 
 clean:
 	rm -f *.ll
 	rm -f $(BPFLIB)
-	rm -f $(TARGETS)
+	rm -f $(KPROBE)
+	rm -f $(STAT)
 	rm -f $(KERN_OBJECTS)
-	rm -f $(USER_OBJECTS)
+	rm -f $(STAT_USER_OBJECTS)
+	rm -f $(KPROBE_USER_OBJECTS)
 
 #  clang option -S generated output file with suffix .ll
 #   which is the non-binary LLVM assembly language format
@@ -66,8 +71,8 @@ $(KERN_OBJECTS): %.o: %.c bpf_helpers.h
 	#now translate LLVM assembly to native assembly
 	$(LLC) -march=bpf -filetype=obj -o $@ ${@:.o=.ll}
 
-$(TARGETS): $(USER_SOURCES) $(BPFLIB) Makefile
-	$(CC) $(CFLAGS) $(BPFLIB) $(LDFLAGS) -o $@ $<
+$(KPROBE_USER): $(KPROBE_USER_SOURCES) $(BPFLIB) Makefile
+	$(DC) $(KPROBE_USER_SOURCES) -g $(BPFLIB) -L-lelf -ofmemcpy_kprobe
 
 $(STAT_USER): $(STAT_USER_SOURCES) $(BPFLIB) Makefile
 	$(DC) $(STAT_USER_SOURCES) -g $(BPFLIB) -L-lelf -ofmemcpy_stat
