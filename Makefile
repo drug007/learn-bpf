@@ -13,7 +13,7 @@ KERNEL ?= /lib/modules/$(shell uname -r)/build/
 CFLAGS := -O2 -Wall
 CFLAGS += -I ./
 
-EXTRA_CFLAGS=-Werror
+# EXTRA_CFLAGS=-Werror
 
 LDFLAGS= -lelf
 
